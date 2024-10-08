@@ -12,7 +12,7 @@ enum SocketEvent {
   CREATE_ROOM = "CREATE_ROOM",
   JOIN_ROOM = "JOIN_ROOM",
   LEAVE_ROOM = "LEAVE_ROOM",
-  MESSAGE = "MESSAGE"
+  MESSAGE = "MESSAGE",
 }
 
 let roomIds: string[] = [];
@@ -32,12 +32,15 @@ io.on("connection", (socket) => {
   const userId = socket.id;
 
   socket.on(SocketEvent.JOIN_APP, () => {
+    socket.join("global");
     socket.emit(SocketEvent.JOIN_APP, userId);
-    socket.broadcast.emit(SocketEvent.JOIN_APP, userId);
+    socket.to("global").emit(SocketEvent.JOIN_APP, userId);
   });
 
   socket.on(SocketEvent.CREATE_ROOM, () => {
     const roomId = createRoomId();
+    roomIds.push(roomId);
+
     socket.join(roomId);
     socket.emit(SocketEvent.CREATE_ROOM, roomId);
   });
@@ -45,15 +48,21 @@ io.on("connection", (socket) => {
   socket.on(SocketEvent.JOIN_ROOM, (roomId: string) => {
     if (roomIds.includes(roomId)) {
       socket.join(roomId);
-      socket.emit(SocketEvent.JOIN_ROOM, userId);
       socket.to(roomId).emit(SocketEvent.JOIN_ROOM, userId);
+
+      // Emit userId to confirm
+      socket.emit(SocketEvent.JOIN_ROOM, userId);
     }
   });
 
   socket.on(SocketEvent.LEAVE_ROOM, (roomId: string) => {
-    socket.leave(roomId);
-    socket.emit(SocketEvent.LEAVE_ROOM, userId);
-    socket.to(roomId).emit(SocketEvent.LEAVE_ROOM, userId);
+    if (roomIds.includes(roomId)) {
+      socket.leave(roomId);
+      socket.to(roomId).emit(SocketEvent.LEAVE_ROOM, userId);
+
+      // Emit userId to confirm
+      socket.emit(SocketEvent.LEAVE_ROOM, userId);
+    }
   });
 
   socket.on(SocketEvent.MESSAGE, (message: string, roomId?: string) => {
@@ -65,16 +74,10 @@ io.on("connection", (socket) => {
   });
 });
 
-io.of("/").adapter.on("create-room", (roomId: string) => {
-  roomIds.push(roomId);
-
-  console.log('create: ', roomIds);
-});
-
 io.of("/").adapter.on("delete-room", (roomId: string) => {
-  roomIds = roomIds.filter(id => id !== roomId);
-
-  console.log('delete: ', roomIds);
+  if (roomIds.includes(roomId)) {
+    roomIds = roomIds.filter((id) => id !== roomId);
+  }
 });
 
 server.listen(PORT, () => {
