@@ -11,7 +11,7 @@ enum SocketEvent {
   SOCKET_ID = "SOCKET_ID",
   JOIN_ROOM = "JOIN_ROOM",
   LEAVE_ROOM = "LEAVE_ROOM",
-  MESSAGE = "MESSAGE",
+  DATA = "DATA",
 }
 
 io.on("connection", (socket) => {
@@ -27,8 +27,8 @@ io.on("connection", (socket) => {
     socket.leave(roomId);
   });
 
-  socket.on(SocketEvent.MESSAGE, (message: unknown, roomId: string) => {
-    socket.to(roomId).emit(SocketEvent.MESSAGE, message);
+  socket.on(SocketEvent.DATA, (roomId: string, key: string, data: unknown) => {
+    socket.to(roomId).emit(SocketEvent.DATA, key, data);
   });
 });
 
