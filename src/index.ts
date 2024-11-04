@@ -6,19 +6,26 @@ const app = express();
 const server = createServer(app);
 const io = new Server(server, { cors: { origin: "*" } });
 const PORT = 4000;
-let currentRoomId: string | null = null;
 
 enum SocketEvent {
-  CONNECT = "CONNECT",
-  DISCONNECT = "DISCONNECT",
+  GET_ID = "GET_ID",
+  USER_DISCONNECT = "USER_DISCONNECT",
   JOIN_ROOM = "JOIN_ROOM",
   LEAVE_ROOM = "LEAVE_ROOM",
   DATA = "DATA",
 }
 
 io.on("connection", (socket) => {
-  socket.on("connect", () => {
-    socket.emit(SocketEvent.CONNECT, socket.id);
+  let currentRoomId: string | null = null;
+
+  socket.on(SocketEvent.GET_ID, () => {
+    socket.emit(SocketEvent.GET_ID, socket.id);
+  });
+
+  socket.on("disconnect", () => {
+    if (currentRoomId) {
+      socket.to(currentRoomId).emit(SocketEvent.USER_DISCONNECT, socket.id);
+    }
   });
 
   socket.on(SocketEvent.JOIN_ROOM, (roomId: string) => {
@@ -33,12 +40,6 @@ io.on("connection", (socket) => {
 
   socket.on(SocketEvent.DATA, (id: string, key: string, data: unknown) => {
     socket.to(id).emit(SocketEvent.DATA, key, data);
-  });
-
-  socket.on("disconnect", () => {
-    if (currentRoomId) {
-      socket.to(currentRoomId).emit(SocketEvent.DISCONNECT, socket.id);
-    }
   });
 });
 
