@@ -15,60 +15,63 @@ type RoomManager = {
 
 // ------------------
 
-let userManager: UserManager = {};
+export class Manager {
+  userManager: UserManager = {};
+  roomManager: RoomManager = {};
 
-let roomManager: RoomManager = {
-  global: {
-    capacity: 100,
-    userIds: [],
-  },
-};
+  joinApp = (): string => {
+    const userId = (Math.random() * 100 + "") as UserId;
+    this.userManager[userId] = null;
+    return userId;
+  };
 
-const joinApp = (): string => {
-  const userId = (Math.random() * 100 + "") as UserId;
-  userManager[userId] = null;
-  return userId;
-};
+  leaveApp = (userId: UserId): boolean => {
+    delete this.userManager[userId];
+    return true;
+  };
 
-const leaveApp = (userId: UserId): boolean => {
-  delete userManager[userId];
-  return true;
-};
+  createRoom = (roomType: "global" | "chat" | "call"): string => {
+    const roomId = roomType === "global" ? "global" : Math.random() * 100 + "";
+    let capacity = -1;
 
-const joinRoom = (roomId: RoomId, userId: UserId): boolean => {
-  const isExisted = roomId in roomManager;
-  if (isExisted) {
-    const room = roomManager[roomId];
+    switch (roomType) {
+      case "global":
+        capacity = 100;
+      case "chat":
+        capacity = 10;
+      case "call":
+        capacity = 4;
+    }
+
+    this.roomManager[roomId] = {
+      capacity,
+      userIds: [],
+    };
+
+    return roomId;
+  };
+
+  removeRoom = (roomId: string): boolean => {
+    delete this.roomManager[roomId];
+    return true;
+  };
+
+  joinRoom = (roomId: RoomId, userId: UserId): boolean => {
+    const room = this.roomManager[roomId];
     const isOverCapacity = room.userIds.length >= room.capacity;
     if (isOverCapacity) {
       return false;
     } else {
       room.userIds.push(userId);
-      userManager[userId] = roomId;
+      this.userManager[userId] = roomId;
       return true;
     }
-  } else {
-    roomManager[roomId] = {
-      capacity: 100, // handle this ....
-      userIds: [userId],
-    };
-    userManager[userId] = roomId;
-    return true;
-  }
-};
+  };
 
-const leaveRoom = (userId: UserId): boolean => {
-  const roomId = userManager[userId];
-  if (roomId) {
-    const room = roomManager[roomId];
+  leaveRoom = (roomId: RoomId, userId: UserId): boolean => {
+    const room = this.roomManager[roomId];
     room.userIds = room.userIds.filter((id) => id !== userId);
-    if (room.userIds.length <= 0) {
-      delete roomManager[roomId];
-    }
-    userManager[userId] = null;
-
+    this.userManager[userId] = null;
     return true;
-  } else {
-    return false;
-  }
-};
+  };
+}
