@@ -18,7 +18,7 @@ enum SocketEvent {
 }
 
 io.on("connection", (socket) => {
-  // let currentRoomId: string | null = null;
+  let currentRoomId: string | null = null;
 
   socket.on(SocketEvent.GET_ID, () => {
     const userId = manager.joinApp();
