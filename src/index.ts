@@ -10,40 +10,39 @@ const PORT = 4000;
 const manager = new Manager();
 
 enum SocketEvent {
-  GET_ID = "GET_ID",
-  USER_DISCONNECT = "USER_DISCONNECT",
-  JOIN_ROOM = "JOIN_ROOM",
-  LEAVE_ROOM = "LEAVE_ROOM",
-  DATA = "DATA",
+  JOIN_APP = "SK_JOIN_APP",
+  LEAVE_APP = "SK_LEAVE_APP",
+  JOIN_ROOM = "SK_JOIN_ROOM",
+  LEAVE_ROOM = "SK_LEAVE_ROOM",
 }
 
 io.on("connection", (socket) => {
-  let currentRoomId: string | null = null;
+  let userId = manager.joinApp();
 
-  socket.on(SocketEvent.GET_ID, () => {
-    const userId = manager.joinApp();
-    socket.emit(SocketEvent.GET_ID, userId);
+  socket.on(SocketEvent.JOIN_APP, () => {
+    socket.emit(SocketEvent.JOIN_APP, userId);
   });
 
   socket.on("disconnect", () => {
-    if (currentRoomId) {
-      socket.to(currentRoomId).emit(SocketEvent.USER_DISCONNECT, socket.id);
+    const roomId = manager.getRoomId(userId);
+    if (roomId) {
+      socket.to(roomId).emit(SocketEvent.LEAVE_APP, socket.id);
     }
   });
 
-  socket.on(SocketEvent.JOIN_ROOM, (roomId: string) => {
-    currentRoomId = roomId;
-    socket.join(roomId);
-  });
+  // socket.on(SocketEvent.JOIN_ROOM, (roomId: string) => {
+  //   currentRoomId = roomId;
+  //   socket.join(roomId);
+  // });
 
-  socket.on(SocketEvent.LEAVE_ROOM, (roomId: string) => {
-    currentRoomId = null;
-    socket.leave(roomId);
-  });
+  // socket.on(SocketEvent.LEAVE_ROOM, (roomId: string) => {
+  //   currentRoomId = null;
+  //   socket.leave(roomId);
+  // });
 
-  socket.on(SocketEvent.DATA, (id: string, key: string, data: unknown) => {
-    socket.to(id).emit(SocketEvent.DATA, key, data);
-  });
+  // socket.on(SocketEvent.DATA, (id: string, key: string, data: unknown) => {
+  //   socket.to(id).emit(SocketEvent.DATA, key, data);
+  // });
 });
 
 server.listen(PORT, () => {

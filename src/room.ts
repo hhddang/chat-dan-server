@@ -74,4 +74,8 @@ export class Manager {
     this.userManager[userId] = null;
     return true;
   };
+
+  getRoomId(userId: string): string | null {
+    return this.userManager[userId];
+  }
 }
