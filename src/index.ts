@@ -15,6 +15,7 @@ enum SocketEvent {
   JOIN_ROOM = "SK_JOIN_ROOM",
   LEAVE_ROOM = "SK_LEAVE_ROOM",
 }
+io.sockets.roo
 
 io.on("connection", (socket) => {
   let userId = manager.joinApp();

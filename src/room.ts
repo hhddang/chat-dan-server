@@ -1,36 +1,34 @@
-type UserId = string;
-type RoomId = string;
 type Room = {
   capacity: number;
-  userIds: UserId[];
+  userIds: string[];
 };
 
 type UserManager = {
-  [userId: UserId]: RoomId | null;
+  [userId: string]: string | null;
 };
 
 type RoomManager = {
-  [roomId: RoomId]: Room;
+  [roomId: string]: Room;
 };
 
 // ------------------
 
 export class Manager {
-  userManager: UserManager = {};
-  roomManager: RoomManager = {};
+  private userManager: UserManager = {};
+  private roomManager: RoomManager = {};
 
-  joinApp = (): string => {
-    const userId = (Math.random() * 100 + "") as UserId;
+  public joinApp (): string {
+    const userId = (Math.random() * 100 + "") as string;
     this.userManager[userId] = null;
     return userId;
   };
 
-  leaveApp = (userId: UserId): boolean => {
+  public leaveApp (userId: string): boolean {
     delete this.userManager[userId];
     return true;
   };
 
-  createRoom = (roomType: "global" | "chat" | "call"): string => {
+  public createRoom (roomType: "global" | "chat" | "call"): string {
     const roomId = roomType === "global" ? "global" : Math.random() * 100 + "";
     let capacity = -1;
 
@@ -51,12 +49,12 @@ export class Manager {
     return roomId;
   };
 
-  removeRoom = (roomId: string): boolean => {
+  public removeRoom (roomId: string): boolean {
     delete this.roomManager[roomId];
     return true;
   };
 
-  joinRoom = (roomId: RoomId, userId: UserId): boolean => {
+  public joinRoom (roomId: string, userId: string): boolean {
     const room = this.roomManager[roomId];
     const isOverCapacity = room.userIds.length >= room.capacity;
     if (isOverCapacity) {
@@ -68,14 +66,18 @@ export class Manager {
     }
   };
 
-  leaveRoom = (roomId: RoomId, userId: UserId): boolean => {
+  public leaveRoom (roomId: string, userId: string): boolean {
     const room = this.roomManager[roomId];
     room.userIds = room.userIds.filter((id) => id !== userId);
     this.userManager[userId] = null;
     return true;
   };
 
-  getRoomId(userId: string): string | null {
+  public getRoomId(userId: string): string | null {
     return this.userManager[userId];
+  }
+
+  public getUserIds(roomId: string): string[] {
+    return this.
   }
 }
