@@ -1,7 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import { Server } from "socket.io";
-import { Manager, RoomManager, RoomType, UserManager } from "manager";
+import { Manager, RoomManager, RoomType, User, UserManager } from "manager";
 import { generateId } from "@utils";
 
 const app = express();
@@ -20,12 +20,12 @@ enum SocketEvent {
 }
 
 io.on("connection", (socket) => {
-  let userId: string;
+  let userId: string = socket.id;
   let userName: string = "test123";
   let currentRoomId: string | null = null;
 
   socket.on(SocketEvent.CONNECT, (name?: string) => {
-    userId = manager.addUser(name);
+    // userId = manager.addUser(name);
     socket.emit(SocketEvent.CONNECT, userId);
     // userName = name
   });
@@ -33,15 +33,23 @@ io.on("connection", (socket) => {
   socket.on(SocketEvent.JOIN_ROOM, (roomType: string, roomId) => {
     // userId = manager.addUser(userName);
     const status = true;
+    const user = { id: userId, name: userName };
     socket.join(roomId);
     socket.emit(SocketEvent.JOIN_ROOM, status);
-    socket.to(roomId).emit(SocketEvent.ADD_USER, { id: userId, name: userName });
+    socket.to(roomId).emit(SocketEvent.ADD_USER, user);
     currentRoomId = roomId;
   });
 
   socket.on(SocketEvent.LEAVE_ROOM, (roomId: string) => {
+    socket.to(roomId).emit(SocketEvent.REMOVE_USER, userId);
     socket.leave(roomId);
     currentRoomId = null;
+  });
+
+  socket.on("disconnect", () => {
+    if (currentRoomId) {
+      socket.to(currentRoomId).emit(SocketEvent.REMOVE_USER, userId);
+    }
   });
 
   socket.onAny((event, data) => {
