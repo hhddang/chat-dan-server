@@ -79,23 +79,37 @@ import { generateId } from "@utils";
 // }
 
 // ------------------------------
+
 type UserId = string;
 type UserName = string;
 type RoomId = string;
+type RoomType = string;
 type Room = {
   [userId: UserId]: UserName;
 };
 
 export class Manager {
   private rooms: { [roomId: RoomId]: Room } = {};
+  private capacities: { [roomType: RoomType]: number } = {
+    global: 2,
+    chat: 10,
+    call: 4,
+  };
 
-  public join(roomId: RoomId, userId: UserId, userName: UserName): void {
+  public join(roomType: RoomType, roomId: RoomId, userId: UserId, userName: UserName): boolean {
     if (roomId in this.rooms) {
-      this.rooms[roomId][userId] = userName;
+      const capacity = this.capacities[roomType];
+      if (Object.keys(this.rooms[roomId]).length >= capacity) {
+        return false;
+      } else {
+        this.rooms[roomId][userId] = userName;
+        console.log(this.rooms);
+        return true;
+      }
     } else {
-      this.rooms[roomId] = {
-        [userId]: userName,
-      };
+      this.rooms[roomId] = { [userId]: userName };
+      console.log(this.rooms);
+      return true;
     }
   }
 
