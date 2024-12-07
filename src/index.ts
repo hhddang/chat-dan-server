@@ -16,109 +16,73 @@ enum SocketEvent {
   REMOVE_USER = "SK_REMOVE_USER",
   JOIN_ROOM = "SK_JOIN_ROOM",
   LEAVE_ROOM = "SK_LEAVE_ROOM",
+  CHANGE_NAME = "SK_CHANGE_NAME",
+  ON_CHANGE_NAME = "SK_CHANGE_NAME",
 }
 
-io.on("connection", (socket) => {
-  let userId: string = socket.id;
-  let userName: string = "n/a";
-  let currentRoomId: string | null = null;
+type EmittedUser = {
+  id: string;
+  name: string;
+};
 
-  socket.on(SocketEvent.CONNECT, (name: string) => {
-    socket.emit(SocketEvent.CONNECT, userId);
-    userName = name;
+io.on("connection", (socket) => {
+  let myId: string = socket.id;
+
+  socket.on(SocketEvent.CONNECT, (myName: string) => {
+    manager.addUser(myId, myName);
+    socket.emit(SocketEvent.CONNECT, myId);
   });
 
   socket.on(SocketEvent.JOIN_ROOM, (roomType: string, roomId: string) => {
-    const status = manager.join(roomType, roomId, userId, userName);
-    const user = { id: userId, name: userName };
-    socket.join(roomId);
-    socket.emit(SocketEvent.JOIN_ROOM, status);
-    socket.to(roomId).emit(SocketEvent.ADD_USER, user);
-    currentRoomId = roomId;
+    const status = manager.join(roomType, roomId, myId);
+    if (status) {
+      const you: EmittedUser = { id: myId, name: manager.userName(myId) };
+      const previousUsers: EmittedUser[] = manager
+        .userIdsInRoom(roomId)
+        .filter((userId) => userId !== myId)
+        .map((userId) => ({ id: userId, name: manager.userName(userId) }));
 
-    setTimeout(() => {
-      console.log(roomType, roomId, userId, userName);
-    }, 2000);
+      socket.join(roomId);
+      if (previousUsers.length >= 1) {
+        socket.emit(SocketEvent.ADD_USER, previousUsers); // Add previous users
+      }
+      socket.to(roomId).emit(SocketEvent.ADD_USER, [you]); // Broadcast to other users about your participation
+    }
+    socket.emit(SocketEvent.JOIN_ROOM, status);
   });
 
   socket.on(SocketEvent.LEAVE_ROOM, (roomId: string) => {
-    socket.to(roomId).emit(SocketEvent.REMOVE_USER, userId);
+    manager.leave(roomId, myId);
+    socket.to(roomId).emit(SocketEvent.REMOVE_USER, myId);
     socket.leave(roomId);
-    currentRoomId = null;
   });
 
   socket.on("disconnect", () => {
-    if (currentRoomId) {
-      socket.to(currentRoomId).emit(SocketEvent.REMOVE_USER, userId);
+    const roomId = manager.currentRoomId(myId);
+    if (roomId) {
+      manager.leave(roomId, myId);
+      manager.removeUser(myId);
+      socket.to(roomId).emit(SocketEvent.REMOVE_USER, myId);
+      socket.leave(roomId);
     }
   });
 
-  socket.onAny((event, data) => {
-    if (!(event in Object.values(SocketEvent))) {
-      socket.to(currentRoomId!).emit(event, data);
+  socket.on(SocketEvent.CHANGE_NAME, (newUserName: string) => {
+    manager.changeUserName(myId, newUserName);
+    const roomId = manager.currentRoomId(myId);
+    const you: EmittedUser = { id: myId, name: manager.userName(myId) };
+    if (roomId) {
+      socket.to(roomId).emit(SocketEvent.CHANGE_NAME, you);
     }
   });
 
-  // socket.on(SocketEvent.CONNECT, (userName?: string) => {
-  //   userId = manager.addUser(userName);
-  //   socket.emit(SocketEvent.CONNECT, userId);
-  // });
-
-  // socket.on(SocketEvent.JOIN_ROOM, (roomType: string, roomId: string) => {
-  //   const status = manager.joinRoom(roomType, roomId, userId);
-  //   socket.emit(SocketEvent.JOIN_ROOM, status);
-  //   socket.to(roomId).emit(SocketEvent.ADD_USER, userId);
-  // });
-
-  // socket.on(SocketEvent.LEAVE_ROOM, (roomId: string) => {
-  //   manager.leaveRoom(roomId, userId);
-  //   socket.to(roomId).emit(SocketEvent.REMOVE_USER, userId);
-  // });
-
-  // socket.on(SocketEvent.GET_USERS, () => {
-  //   const roomId = manager.getRoomId(userId);
-
-  //   if (roomId) {
-  //     const room = manager.socket.emit(SocketEvent.GET_USERS, manager.getUSers);
-  //   }
-
-  //   socket.on(SocketEvent.LEAVE_ROOM, () => {
-  //     const roomId = "";
-  //     socket.emit(SocketEvent.REMOVE_USER, userId);
-  //     socket.leave(roomId);
-  //   });
-  // });
-
-  // socket.on("disconnect", () => {
-  //   const roomId = manager.getRoomId(userId);
-  //   manager.disconnect(userId);
-  //   if (roomId) {
-  //     socket.to(roomId).emit(SocketEvent.REMOVE_USER, socket.id);
-  //   }
-  // });
-
-  // socket.on(SocketEvent.CREATE_ROOM, (roomType: RoomType) => {
-  //   const roomId = manager.createRoom(roomType);
-  //   socket.emit(SocketEvent.CREATE_ROOM, roomId);
-  // });
-
-  // socket.on(SocketEvent.JOIN_ROOM, (roomType: RoomType, roomId: string) => {
-  //   manager.joinRoom(roomId, userId);
-  // });
-
-  // socket.on(SocketEvent.LEAVE_ROOM, () => {
-  //   const roomId = manager.getRoomId(userId);
-  //   if (roomId) {
-  //     const userIds = manager.getUserIds(roomId);
-  //     manager.leaveRoom(userId);
-  //     if (userIds.length <= 0) {
-  //       manager.deleteRoom(roomId);
+  // socket.onAny((event, data) => {
+  //   if (!(event in Object.values(SocketEvent))) {
+  //     const roomId = manager.currentRoomId(myId);
+  //     if (roomId) {
+  //       socket.to(roomId).emit(event, data);
   //     }
   //   }
-  // });
-
-  // socket.on(SocketEvent.DATA, (id: string, key: string, data: unknown) => {
-  //   socket.to(id).emit(SocketEvent.DATA, key, data);
   // });
 });
 
