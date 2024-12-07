@@ -76,14 +76,14 @@ io.on("connection", (socket) => {
     }
   });
 
-  // socket.onAny((event, data) => {
-  //   if (!(event in Object.values(SocketEvent))) {
-  //     const roomId = manager.currentRoomId(myId);
-  //     if (roomId) {
-  //       socket.to(roomId).emit(event, data);
-  //     }
-  //   }
-  // });
+  socket.onAny((event, data) => {
+    if (!(event in Object.values(SocketEvent))) {
+      const roomId = manager.currentRoomId(myId);
+      if (roomId) {
+        socket.to(roomId).emit(event, data);
+      }
+    }
+  });
 });
 
 server.listen(PORT, () => {
