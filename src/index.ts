@@ -11,13 +11,12 @@ const manager = new Manager();
 
 enum SocketEvent {
   CONNECT = "SK_CONNECT",
-  GET_USERS = "SK_GET_USERS",
-  ADD_USER = "SK_ADD_USER",
-  REMOVE_USER = "SK_REMOVE_USER",
   JOIN_ROOM = "SK_JOIN_ROOM",
   LEAVE_ROOM = "SK_LEAVE_ROOM",
+  GET_USERS = "SK_GET_USERS",
+  USER_JOIN = "SK_USER_JOIN",
+  USER_LEAVE = "SK_USER_LEAVE",
   CHANGE_NAME = "SK_CHANGE_NAME",
-  ON_CHANGE_NAME = "SK_CHANGE_NAME",
 }
 
 type EmittedUser = {
@@ -37,23 +36,15 @@ io.on("connection", (socket) => {
     const status = manager.join(roomType, roomId, myId);
     if (status) {
       const you: EmittedUser = { id: myId, name: manager.userName(myId) };
-      const previousUsers: EmittedUser[] = manager
-        .userIdsInRoom(roomId)
-        .filter((userId) => userId !== myId)
-        .map((userId) => ({ id: userId, name: manager.userName(userId) }));
-
       socket.join(roomId);
-      if (previousUsers.length >= 1) {
-        socket.emit(SocketEvent.ADD_USER, previousUsers); // Add previous users
-      }
-      socket.to(roomId).emit(SocketEvent.ADD_USER, [you]); // Broadcast to other users about your participation
+      socket.to(roomId).emit(SocketEvent.USER_JOIN, you); // Broadcast to other users about your participation
     }
     socket.emit(SocketEvent.JOIN_ROOM, status);
   });
 
   socket.on(SocketEvent.LEAVE_ROOM, (roomId: string) => {
     manager.leave(roomId, myId);
-    socket.to(roomId).emit(SocketEvent.REMOVE_USER, myId);
+    socket.to(roomId).emit(SocketEvent.USER_LEAVE, myId);  // Broadcast to other users about your leaving
     socket.leave(roomId);
   });
 
@@ -62,9 +53,15 @@ io.on("connection", (socket) => {
     if (roomId) {
       manager.leave(roomId, myId);
       manager.removeUser(myId);
-      socket.to(roomId).emit(SocketEvent.REMOVE_USER, myId);
+      socket.to(roomId).emit(SocketEvent.USER_LEAVE, myId);
       socket.leave(roomId);
     }
+  });
+
+  socket.on(SocketEvent.GET_USERS, (roomId: string) => {
+    const users: EmittedUser[] = manager.userIdsInRoom(roomId).map((userId) => ({ id: userId, name: manager.userName(userId) }));
+    // .filter((userId) => userId !== myId)
+    socket.emit(SocketEvent.GET_USERS, users);
   });
 
   socket.on(SocketEvent.CHANGE_NAME, (newUserName: string) => {
