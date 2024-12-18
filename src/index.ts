@@ -16,7 +16,8 @@ enum SocketEvent {
   GET_USERS = "SK_GET_USERS",
   USER_JOIN = "SK_USER_JOIN",
   USER_LEAVE = "SK_USER_LEAVE",
-  CHANGE_NAME = "SK_CHANGE_NAME",
+  CHANGE_YOUR_NAME = "SK_CHANGE_YOUR_NAME",
+  CHANGE_OTHER_NAME = "SK_CHANGE_OTHER_NAME",
 }
 
 type EmittedUser = {
@@ -34,12 +35,12 @@ io.on("connection", (socket) => {
 
   socket.on(SocketEvent.JOIN_ROOM, (roomType: string, roomId: string) => {
     const status = manager.join(roomType, roomId, myId);
+    socket.emit(SocketEvent.JOIN_ROOM, status);
     if (status) {
       const you: EmittedUser = { id: myId, name: manager.userName(myId) };
       socket.join(roomId);
       socket.to(roomId).emit(SocketEvent.USER_JOIN, you); // Broadcast to other users about your participation
     }
-    socket.emit(SocketEvent.JOIN_ROOM, status);
   });
 
   socket.on(SocketEvent.LEAVE_ROOM, (roomId: string) => {
@@ -64,12 +65,12 @@ io.on("connection", (socket) => {
     socket.emit(SocketEvent.GET_USERS, users);
   });
 
-  socket.on(SocketEvent.CHANGE_NAME, (newUserName: string) => {
+  socket.on(SocketEvent.CHANGE_YOUR_NAME, (newUserName: string) => {
     manager.changeUserName(myId, newUserName);
     const roomId = manager.currentRoomId(myId);
     const you: EmittedUser = { id: myId, name: manager.userName(myId) };
     if (roomId) {
-      socket.to(roomId).emit(SocketEvent.CHANGE_NAME, you);
+      socket.to(roomId).emit(SocketEvent.CHANGE_OTHER_NAME, you);
     }
   });
 
